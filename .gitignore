@@ -1,0 +1,33 @@
+### Example user template template
+### Example user template
+
+# 依赖包目录（如 Maven 的 target, Gradle 的 build）
+target/
+build/
+out/
+bin/
+gen/
+
+
+# 日志文件
+*.log
+logs/
+
+# 编译产物
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+
+# IntelliJ IDEA 特定文件
+.idea/
+*.iml
+*.iws
+*.ipr
+.mvn/
+mvnw*
+*.flattened-pom.xml
+# 其他临时文件
+*.tmp
+*.temp
