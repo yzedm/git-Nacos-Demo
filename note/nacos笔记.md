@@ -266,7 +266,6 @@ public class MyGlobalFilter  implements GlobalFilter{
 
 需求：在网关中基于过滤器实现登录校验功能
 
-hmall 更改！
 ```
 通过继承GloableFilter，Ordered实现，AuthLoginGloableFilter
 代码:AuthLoginGloableFilter.java
@@ -286,5 +285,90 @@ exchange.mutate()
 
 注意需要传递给下一个过滤器。
 
-Nacos更改内容
-Copy 更改内容
+### 将保存用户信息功能放入hm-common中
+
+由于每个微服务都有可能有获取登录用户的需求，所以将该功能定义在common模块中
+
+拦截器定义：
+
+```java
+public class UserInfoInterceptor implements HandlerInterceptor {
+    //该拦截器不做任何的登录拦截功能，唯一的作用就是保存登录成功的user用户信息
+
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        //在进入controller前执行，所以他的作用是保存用户信息
+        //1.获取登录用户信息
+        String header = request.getHeader("user-info");
+        //2.判断是否获取了用户，存入ThreadLocal
+        if (StrUtil.isNotBlank(header)) {
+            UserContext.setUser(Long.valueOf(header));
+        }
+        //3.放行
+            return true;
+    }
+
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+        //controller之后执行，清理用户信息
+        UserContext.removeUser();
+
+    }}
+```
+
+拦截器配置
+
+```java
+@Configuration
+public class MvcConfig implements WebMvcConfigurer {
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        //此处不添加任何 拦截path，表示不做任何的拦截
+        registry.addInterceptor(new UserInfoInterceptor());
+    }
+}
+注意：此时该配置类无法被spring扫描到！！！，因为项目中的各种微服务都不会扫描commnon中的配置类
+```
+
+需要再下面的配置文件中，将配置类添加进去，保证项目启动时，该配置类被spring扫描到;
+
+![image-20251229144934567](images/media/image-20251229144934567.png)
+
+```xml
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  com.hmall.common.config.MyBatisConfig,\
+  com.hmall.common.config.MvcConfig,\
+  com.hmall.common.config.JsonConfig
+```
+
+但是此时重新启动gateway还是会报错：
+
+![image-20251229145914854](images/media/image-20251229145914854.png)
+
+网关部分代码报错，WebMvcconfigurer找不到？
+
+​	是因为Gateway中pom.xml引用了hm-common的依赖，而WebMvcConfigurer是springmvc包下的，但是网关gateway的底层不是基于springmvc的一套，所以里面没有springmvc，所以报错了。
+
+![image-20251229151908634](images/media/image-20251229151908634.png)
+
+解决方法：
+
+让common在微服务中生效，在网关中不生效，利用网关中没有springmvc的特性,条件注解
+
+```java
+@Configuration
+@ConditionalOnClass(DispatcherServlet.class)
+/*ConditionalOnClass 该注解的作用是，如果该环境下没有springmvc的核心类DispatcherServlet的话
+* 就不会自动将该MvcConfig加载，主要的作用是网关(没有springmvc)部分需要加载该类(有springmvc)*/
+public class MvcConfig  implements WebMvcConfigurer {
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        //该拦截器不会拦截任何请求，只是为了传递Userinfo对象
+        registry.addInterceptor(new UserInfoInterceptor());
+    }
+}
+```
+
+### OpneFeign传递用户
+
+微服务之间的项目调用，也需要传递用户的信息

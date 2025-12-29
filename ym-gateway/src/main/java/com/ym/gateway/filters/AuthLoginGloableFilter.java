@@ -1,6 +1,7 @@
 package com.ym.gateway.filters;
 
 
+import cn.hutool.core.util.StrUtil;
 import com.hmall.common.exception.UnauthorizedException;
 import com.ym.gateway.config.AuthProperties;
 import com.ym.gateway.utils.JwtTool;
@@ -48,24 +49,25 @@ public class AuthLoginGloableFilter implements GlobalFilter, Ordered {
         //校验token
         try {
             userid = jwtTool.parseToken(Token);
+
         } catch (UnauthorizedException e) {
             //拦截，设置响应码为401
             ServerHttpResponse response = exchange.getResponse();
             response.setStatusCode(HttpStatus.UNAUTHORIZED);
+            //响应终止
             return  response.setComplete();
         }
-        //todo 传递用户信息
+        //传递用户信息
         String userInfo = userid.toString();
         ServerWebExchange newExchange = exchange.mutate()
                 .request(builder -> builder.header("user-info", userInfo))
                 .build();
-
-        System.out.println("userid:"+userid);
-
+        //将包含 user-info的信息传递下去
         return chain.filter(newExchange);
     }
 
     private boolean isExclude(String path) {
+        // spring提供的路径匹配器
         for (String excludePath : authProperties.getExcludePaths()) {
             if(antPathMatcher.match(excludePath,path)){
                 return true;
