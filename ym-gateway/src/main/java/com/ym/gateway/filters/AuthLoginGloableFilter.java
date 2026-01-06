@@ -55,11 +55,11 @@ public class AuthLoginGloableFilter implements GlobalFilter, Ordered {
             ServerHttpResponse response = exchange.getResponse();
             response.setStatusCode(HttpStatus.UNAUTHORIZED);
             //响应终止
-            return  response.setComplete();
+              return  response.setComplete();
         }
-        //传递用户信息
+        //传递用户信息,将用户信息保存到请求头中，但是不是每个微服务都需要用户信息
         String userInfo = userid.toString();
-        ServerWebExchange newExchange = exchange.mutate()
+        ServerWebExchange newExchange = exchange.mutate() // mutate就是对下游的请求做处理
                 .request(builder -> builder.header("user-info", userInfo))
                 .build();
         //将包含 user-info的信息传递下去

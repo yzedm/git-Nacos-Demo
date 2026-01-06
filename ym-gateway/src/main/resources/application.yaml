@@ -29,7 +29,7 @@ spring:
           predicates:
             - Path=/pay-orders/**
       default-filters:
-        - AddRequestHeader= truth, anyone long-press like button will rich
+        - AddRequestHeader=truth, anyone long-press like button will rich
 hm:
   jwt:
     location: classpath:hmall.jks
